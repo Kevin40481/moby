@@ -31,7 +31,6 @@ import (
 	"github.com/docker/docker/testutil"
 	"github.com/docker/docker/testutil/fakecontext"
 	"github.com/docker/go-connections/nat"
-	"github.com/google/uuid"
 	"github.com/moby/sys/mountinfo"
 	"gotest.tools/v3/assert"
 	"gotest.tools/v3/icmd"
@@ -2765,16 +2764,25 @@ func (s *DockerCLIRunSuite) TestRunContainerWithRmFlagExitCodeNotEqualToZero(c *
 }
 
 func (s *DockerCLIRunSuite) TestRunContainerWithRmFlagCannotStartContainer(c *testing.T) {
-	random := uuid.New().String()
-	for i := 0; i < 20; i++ {
-		name := fmt.Sprintf("sparkles_%s_%d", random, i)
+	for i := 0; i < 30; i++ {
+		name := fmt.Sprintf("sparkles_%d", i)
 
 		c.Run(name, func(c *testing.T) {
 			cli.Docker(cli.Args("run", "--name", name, "--rm", "busybox", "commandNotFound")).Assert(c, icmd.Expected{
 				ExitCode: 127,
 			})
 
+			ok := false
+			defer func() {
+				if !ok {
+					res := cli.Docker(cli.Args("ps", "-a"))
+					c.Logf("ps -a: out: %s, err: %s", res.Stdout(), res.Stderr())
+					res = cli.Docker(cli.Args("container", "inspect", name))
+					c.Logf("inspect: out: %s, err: %s", res.Stdout(), res.Stderr())
+				}
+			}()
 			poll.WaitOn(c, containerRemoved(name), poll.WithTimeout(time.Second*20))
+			ok = true
 		})
 	}
 }
