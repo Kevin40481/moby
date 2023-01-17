@@ -91,12 +91,25 @@ func (i *ImageService) Images(ctx context.Context, opts types.ImageListOptions) 
 			return nil, err
 		}
 
+		target := img.Target().Digest
+
+		ref, err := reference.ParseNamed(img.Name())
+		digests := []string{"<none>@<none>"}
+		tags := []string{"<none>:<none>"}
+		if err == nil {
+			tags[0] = reference.TagNameOnly(ref).String()
+			digested, err := reference.WithDigest(reference.TrimNamed(ref), target)
+			if err == nil {
+				digests[0] = digested.String()
+			}
+		}
+
 		summaries = append(summaries, &types.ImageSummary{
 			ParentID:    "",
-			ID:          img.Target().Digest.String(),
+			ID:          target.String(),
 			Created:     img.Metadata().CreatedAt.Unix(),
-			RepoDigests: []string{img.Name() + "@" + img.Target().Digest.String()}, // "hello-world@sha256:bfea6278a0a267fad2634554f4f0c6f31981eea41c553fdf5a83e95a41d40c38"},
-			RepoTags:    []string{img.Name()},
+			RepoDigests: digests,
+			RepoTags:    tags,
 			Size:        size,
 			VirtualSize: virtualSize,
 			// -1 indicates that the value has not been set (avoids ambiguity
