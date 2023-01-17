@@ -37,10 +37,14 @@ func (i *ImageService) TagImageWithReference(ctx context.Context, imageID image.
 			return errdefs.System(err)
 		}
 
-		// If there already exists an image with this tag, delete it
-		err := is.Delete(ctx, img.Name)
+		oldImg, err := is.Get(ctx, newTag.String())
+		if cerrdefs.IsNotFound(err) {
+			logger.WithError(err).Error("image creation failed with IsAlreadyExists error, but getting the old image also failed")
+			return errdefs.Unknown(err)
+		}
 
-		if err != nil {
+		// If there already exists an image with this tag, delete it
+		if err := i.softImageDelete(oldImg); err != nil {
 			logger.WithError(err).Error("failed to delete old image")
 			return errdefs.System(err)
 		}
