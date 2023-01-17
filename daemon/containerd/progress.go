@@ -51,6 +51,10 @@ func (j *jobs) showProgress(ctx context.Context, out progress.Output, updater pr
 					return
 				}
 			case <-ctx.Done():
+				ctx, err := context.WithTimeout(ctx, time.Millisecond*100)
+				if err == nil {
+					updater.UpdateProgress(ctx, j, out, start)
+				}
 				return
 			}
 		}
